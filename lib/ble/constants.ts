@@ -1,0 +1,85 @@
+// WHOOP 4.0 BLE Service and Characteristic UUIDs
+export const WHOOP_SERVICE = '61080001-8d6d-82b8-614a-1c8cb0f8dcc6';
+export const WHOOP_CHAR_CMD_TO_STRAP = '61080002-8d6d-82b8-614a-1c8cb0f8dcc6';
+export const WHOOP_CHAR_CMD_FROM_STRAP = '61080003-8d6d-82b8-614a-1c8cb0f8dcc6';
+export const WHOOP_CHAR_EVENTS_FROM_STRAP = '61080004-8d6d-82b8-614a-1c8cb0f8dcc6';
+export const WHOOP_CHAR_DATA_FROM_STRAP = '61080005-8d6d-82b8-614a-1c8cb0f8dcc6';
+
+export enum PacketType {
+  COMMAND = 35,
+  COMMAND_RESPONSE = 36,
+  REALTIME_DATA = 40,
+  HISTORICAL_DATA = 47,
+  REALTIME_RAW_DATA = 43,
+  EVENT = 48,
+  METADATA = 49,
+  CONSOLE_LOGS = 50,
+  REALTIME_IMU_DATA_STREAM = 51,
+  HISTORICAL_IMU_DATA_STREAM = 52,
+}
+
+export enum MetadataType {
+  HISTORY_START = 1,
+  HISTORY_END = 2,
+  HISTORY_COMPLETE = 3,
+}
+
+export enum EventNumber {
+  UNDEFINED = 0,
+  ERROR = 1,
+  CONSOLE_OUTPUT = 2,
+  BATTERY_LEVEL = 3,
+  SYSTEM_CONTROL = 4,
+  EXTERNAL_5V_ON = 5,
+  EXTERNAL_5V_OFF = 6,
+  CHARGING_ON = 7,
+  CHARGING_OFF = 8,
+  WRIST_ON = 9,
+  WRIST_OFF = 10,
+  BLE_CONNECTION_UP = 11,
+  BLE_CONNECTION_DOWN = 12,
+  RTC_LOST = 13,
+  DOUBLE_TAP = 14,
+  BOOT = 15,
+  SET_RTC = 16,
+  TEMPERATURE_LEVEL = 17,
+  PAIRING_MODE = 18,
+}
+
+export enum CommandNumber {
+  LINK_VALID = 1,
+  GET_MAX_PROTOCOL_VERSION = 2,
+  TOGGLE_REALTIME_HR = 3,
+  REPORT_VERSION_INFO = 7,
+  SET_CLOCK = 10,
+  GET_CLOCK = 11,
+  TOGGLE_GENERIC_HR_PROFILE = 14,
+  ABORT_HISTORICAL_TRANSMITS = 20,
+  SEND_HISTORICAL_DATA = 22,
+  HISTORICAL_DATA_RESULT = 23,
+  FORCE_TRIM = 25,
+  GET_BATTERY_LEVEL = 26,
+  REBOOT_STRAP = 29,
+  POWER_CYCLE_STRAP = 32,
+  SET_READ_POINTER = 33,
+  GET_DATA_RANGE = 34,
+  GET_HELLO_HARVARD = 35,
+  RUN_ALARM = 68,
+  DISABLE_ALARM = 69,
+  RUN_HAPTICS_PATTERN = 79,
+  START_RAW_DATA = 81,
+  STOP_RAW_DATA = 82,
+  STOP_HAPTICS = 122,
+}
+
+// Data structures
+export interface HistoricalRecord {
+  unix: number;
+  heartRate: number;
+  rrIntervals: number[];
+}
+
+export interface DeviceInfo {
+  harvardVersion: string;
+  boylstonVersion: string;
+}

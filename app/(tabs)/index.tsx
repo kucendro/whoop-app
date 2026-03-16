@@ -1,98 +1,269 @@
-import { Image } from 'expo-image';
-import { Platform, StyleSheet } from 'react-native';
+import React from 'react';
+import {
+  View,
+  Text,
+  StyleSheet,
+  ScrollView,
+  TouchableOpacity,
+} from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { useRouter } from 'expo-router';
+import { useDeviceStore } from '@/lib/store/device-store';
+import { Card } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { BatteryIndicator } from '@/components/device/battery-indicator';
+import { HeartRateChart } from '@/components/charts/heart-rate-chart';
+import { colors, spacing, fontSize, fontWeight, radius } from '@/constants/theme';
 
-import { HelloWave } from '@/components/hello-wave';
-import ParallaxScrollView from '@/components/parallax-scroll-view';
-import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
-import { Link } from 'expo-router';
+export default function DashboardScreen() {
+  const {
+    connectionState,
+    currentHR,
+    heartRateHistory,
+    batteryLevel,
+    isCharging,
+    isWorn,
+    isRealtimeActive,
+    toggleRealtimeHR,
+  } = useDeviceStore();
+  const router = useRouter();
 
-export default function HomeScreen() {
+  const isConnected = connectionState === 'connected';
+
   return (
-    <ParallaxScrollView
-      headerBackgroundColor={{ light: '#A1CEDC', dark: '#1D3D47' }}
-      headerImage={
-        <Image
-          source={require('@/assets/images/partial-react-logo.png')}
-          style={styles.reactLogo}
-        />
-      }>
-      <ThemedView style={styles.titleContainer}>
-        <ThemedText type="title">Welcome!</ThemedText>
-        <HelloWave />
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 1: Try it</ThemedText>
-        <ThemedText>
-          Edit <ThemedText type="defaultSemiBold">app/(tabs)/index.tsx</ThemedText> to see changes.
-          Press{' '}
-          <ThemedText type="defaultSemiBold">
-            {Platform.select({
-              ios: 'cmd + d',
-              android: 'cmd + m',
-              web: 'F12',
-            })}
-          </ThemedText>{' '}
-          to open developer tools.
-        </ThemedText>
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <Link href="/modal">
-          <Link.Trigger>
-            <ThemedText type="subtitle">Step 2: Explore</ThemedText>
-          </Link.Trigger>
-          <Link.Preview />
-          <Link.Menu>
-            <Link.MenuAction title="Action" icon="cube" onPress={() => alert('Action pressed')} />
-            <Link.MenuAction
-              title="Share"
-              icon="square.and.arrow.up"
-              onPress={() => alert('Share pressed')}
-            />
-            <Link.Menu title="More" icon="ellipsis">
-              <Link.MenuAction
-                title="Delete"
-                icon="trash"
-                destructive
-                onPress={() => alert('Delete pressed')}
+    <SafeAreaView style={styles.container} edges={['top']}>
+      <ScrollView
+        style={styles.scroll}
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+      >
+        {/* Header */}
+        <View style={styles.header}>
+          <View>
+            <Text style={styles.greeting}>WHOOP</Text>
+            <View style={styles.statusRow}>
+              <Badge
+                label={isConnected ? 'Connected' : 'Disconnected'}
+                variant={isConnected ? 'success' : 'error'}
               />
-            </Link.Menu>
-          </Link.Menu>
-        </Link>
+              {isConnected && (
+                <Badge
+                  label={isWorn ? 'On Wrist' : 'Off Wrist'}
+                  variant={isWorn ? 'success' : 'warning'}
+                />
+              )}
+            </View>
+          </View>
+          {isConnected && (
+            <BatteryIndicator level={batteryLevel} isCharging={isCharging} />
+          )}
+        </View>
 
-        <ThemedText>
-          {`Tap the Explore tab to learn more about what's included in this starter app.`}
-        </ThemedText>
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 3: Get a fresh start</ThemedText>
-        <ThemedText>
-          {`When you're ready, run `}
-          <ThemedText type="defaultSemiBold">npm run reset-project</ThemedText> to get a fresh{' '}
-          <ThemedText type="defaultSemiBold">app</ThemedText> directory. This will move the current{' '}
-          <ThemedText type="defaultSemiBold">app</ThemedText> to{' '}
-          <ThemedText type="defaultSemiBold">app-example</ThemedText>.
-        </ThemedText>
-      </ThemedView>
-    </ParallaxScrollView>
+        {/* Heart Rate Display */}
+        <Card style={styles.hrCard}>
+          <View style={styles.hrHeader}>
+            <Text style={styles.hrLabel}>Heart Rate</Text>
+            {isConnected && (
+              <TouchableOpacity
+                onPress={toggleRealtimeHR}
+                style={[
+                  styles.hrToggle,
+                  isRealtimeActive && styles.hrToggleActive,
+                ]}
+                activeOpacity={0.7}
+              >
+                <View
+                  style={[
+                    styles.hrToggleDot,
+                    isRealtimeActive && styles.hrToggleDotActive,
+                  ]}
+                />
+                <Text
+                  style={[
+                    styles.hrToggleText,
+                    isRealtimeActive && styles.hrToggleTextActive,
+                  ]}
+                >
+                  {isRealtimeActive ? 'LIVE' : 'START'}
+                </Text>
+              </TouchableOpacity>
+            )}
+          </View>
+
+          <View style={styles.hrValueContainer}>
+            <Text style={styles.hrValue}>
+              {currentHR !== null ? currentHR : '--'}
+            </Text>
+            <Text style={styles.hrUnit}>bpm</Text>
+          </View>
+
+          {/* Heart Rate Chart */}
+          <HeartRateChart data={heartRateHistory} />
+        </Card>
+
+        {/* Quick Stats */}
+        {heartRateHistory.length > 0 && (
+          <View style={styles.quickStats}>
+            <Card style={styles.quickStatCard}>
+              <Text style={styles.quickStatLabel}>Session</Text>
+              <Text style={styles.quickStatValue}>
+                {Math.floor(heartRateHistory.length / 60)}m{' '}
+                {heartRateHistory.length % 60}s
+              </Text>
+            </Card>
+            <Card style={styles.quickStatCard}>
+              <Text style={styles.quickStatLabel}>Samples</Text>
+              <Text style={styles.quickStatValue}>
+                {heartRateHistory.length}
+              </Text>
+            </Card>
+          </View>
+        )}
+
+        {/* Not connected message */}
+        {!isConnected && (
+          <Card variant="outlined" style={styles.disconnectedCard}>
+            <Text style={styles.disconnectedText}>
+              Connect to your WHOOP to start monitoring
+            </Text>
+            <Button
+              title="Connect WHOOP"
+              onPress={() => router.push('/connect')}
+              variant="primary"
+              style={styles.connectButton}
+            />
+          </Card>
+        )}
+      </ScrollView>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  titleContainer: {
+  container: {
+    flex: 1,
+    backgroundColor: colors.bg,
+  },
+  scroll: {
+    flex: 1,
+  },
+  scrollContent: {
+    paddingHorizontal: spacing.lg,
+    paddingBottom: spacing.xxxl,
+  },
+  header: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    paddingVertical: spacing.lg,
+  },
+  greeting: {
+    fontSize: fontSize.xl,
+    fontWeight: fontWeight.bold,
+    color: colors.text,
+    letterSpacing: 2,
+    marginBottom: spacing.sm,
+  },
+  statusRow: {
+    flexDirection: 'row',
+    gap: spacing.sm,
+  },
+  hrCard: {
+    marginBottom: spacing.lg,
+  },
+  hrHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: spacing.md,
+  },
+  hrLabel: {
+    fontSize: fontSize.sm,
+    fontWeight: fontWeight.semibold,
+    color: colors.textSecondary,
+    letterSpacing: 0.5,
+    textTransform: 'uppercase',
+  },
+  hrToggle: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    paddingVertical: 4,
+    paddingHorizontal: spacing.sm,
+    borderRadius: radius.full,
+    backgroundColor: colors.bgCardHover,
+    gap: spacing.xs,
   },
-  stepContainer: {
-    gap: 8,
-    marginBottom: 8,
+  hrToggleActive: {
+    backgroundColor: colors.accentDim,
   },
-  reactLogo: {
-    height: 178,
-    width: 290,
-    bottom: 0,
-    left: 0,
-    position: 'absolute',
+  hrToggleDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: colors.textTertiary,
+  },
+  hrToggleDotActive: {
+    backgroundColor: colors.accent,
+  },
+  hrToggleText: {
+    fontSize: fontSize.xs,
+    fontWeight: fontWeight.semibold,
+    color: colors.textTertiary,
+    letterSpacing: 1,
+  },
+  hrToggleTextActive: {
+    color: colors.accent,
+  },
+  hrValueContainer: {
+    flexDirection: 'row',
+    alignItems: 'baseline',
+    marginBottom: spacing.lg,
+  },
+  hrValue: {
+    fontSize: fontSize.display,
+    fontWeight: fontWeight.bold,
+    color: colors.text,
+    lineHeight: 70,
+  },
+  hrUnit: {
+    fontSize: fontSize.lg,
+    fontWeight: fontWeight.medium,
+    color: colors.textTertiary,
+    marginLeft: spacing.sm,
+  },
+  quickStats: {
+    flexDirection: 'row',
+    gap: spacing.md,
+    marginBottom: spacing.lg,
+  },
+  quickStatCard: {
+    flex: 1,
+  },
+  quickStatLabel: {
+    fontSize: fontSize.xs,
+    fontWeight: fontWeight.medium,
+    color: colors.textTertiary,
+    letterSpacing: 0.5,
+    textTransform: 'uppercase',
+    marginBottom: spacing.xs,
+  },
+  quickStatValue: {
+    fontSize: fontSize.lg,
+    fontWeight: fontWeight.bold,
+    color: colors.text,
+  },
+  disconnectedCard: {
+    alignItems: 'center',
+    paddingVertical: spacing.xxxl,
+  },
+  disconnectedText: {
+    fontSize: fontSize.md,
+    color: colors.textTertiary,
+    textAlign: 'center',
+    marginBottom: spacing.lg,
+  },
+  connectButton: {
+    width: '100%',
   },
 });
