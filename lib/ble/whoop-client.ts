@@ -1,5 +1,5 @@
 import { BleManager, Device, Characteristic, Subscription } from 'react-native-ble-plx';
-import { Platform, PermissionsAndroid } from 'react-native';
+import { Platform, PermissionsAndroid, Linking } from 'react-native';
 import { WhoopPacket, buildCommand } from './packet';
 import { AsyncQueue } from './async-queue';
 import {
@@ -87,7 +87,13 @@ class WhoopClient {
    */
   private getManager(): BleManager {
     if (!this.manager) {
-      this.manager = new BleManager();
+      try {
+        this.manager = new BleManager();
+      } catch (e) {
+        throw new Error(
+          'BLE native module not available. This app requires a development build — it cannot run in Expo Go. Run "npx expo prebuild" then build with Android Studio or Xcode.'
+        );
+      }
     }
     return this.manager;
   }
@@ -111,8 +117,9 @@ class WhoopClient {
 
   /**
    * Request BLE permissions (Android)
+   * Returns: 'granted' | 'denied' | 'blocked' (blocked = never_ask_again)
    */
-  async requestPermissions(): Promise<boolean> {
+  async requestPermissions(): Promise<'granted' | 'denied' | 'blocked'> {
     if (Platform.OS === 'android') {
       const apiLevel = Platform.Version;
       if (apiLevel >= 31) {
@@ -121,17 +128,26 @@ class WhoopClient {
           PermissionsAndroid.PERMISSIONS.BLUETOOTH_CONNECT,
           PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION,
         ]);
-        return Object.values(result).every(
-          (v) => v === PermissionsAndroid.RESULTS.GRANTED
-        );
+        console.log('BLE permission results:', JSON.stringify(result));
+        const values = Object.values(result);
+        if (values.every((v) => v === PermissionsAndroid.RESULTS.GRANTED)) {
+          return 'granted';
+        }
+        if (values.some((v) => v === PermissionsAndroid.RESULTS.NEVER_ASK_AGAIN)) {
+          return 'blocked';
+        }
+        return 'denied';
       } else {
         const result = await PermissionsAndroid.request(
           PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION
         );
-        return result === PermissionsAndroid.RESULTS.GRANTED;
+        console.log('BLE location permission result:', result);
+        if (result === PermissionsAndroid.RESULTS.GRANTED) return 'granted';
+        if (result === PermissionsAndroid.RESULTS.NEVER_ASK_AGAIN) return 'blocked';
+        return 'denied';
       }
     }
-    return true;
+    return 'granted';
   }
 
   /**
@@ -139,9 +155,15 @@ class WhoopClient {
    */
   async connect(): Promise<boolean> {
     try {
-      const hasPermissions = await this.requestPermissions();
-      if (!hasPermissions) {
-        this.callbacks.onError?.('Bluetooth permissions not granted');
+      const permissionStatus = await this.requestPermissions();
+      if (permissionStatus === 'blocked') {
+        this.callbacks.onError?.('Bluetooth permissions permanently denied. Please enable them in Settings > Apps > WHOOP > Permissions.');
+        // Try to open app settings automatically
+        Linking.openSettings().catch(() => {});
+        return false;
+      }
+      if (permissionStatus === 'denied') {
+        this.callbacks.onError?.('Bluetooth permissions not granted. Please allow Bluetooth and Location access.');
         return false;
       }
 

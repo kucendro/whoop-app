@@ -11,6 +11,7 @@ interface DeviceState {
   // Connection
   connectionState: ConnectionState;
   isRealtimeActive: boolean;
+  error: string | null;
 
   // Device info
   batteryLevel: number | null;
@@ -37,6 +38,7 @@ interface DeviceState {
   reboot: () => Promise<void>;
   clearHeartRateHistory: () => void;
   setMaxHistoryPoints: (points: number) => void;
+  clearError: () => void;
 }
 
 export const useDeviceStore = create<DeviceState>((set, get) => {
@@ -85,6 +87,7 @@ export const useDeviceStore = create<DeviceState>((set, get) => {
     },
     onError: (error) => {
       console.error('WHOOP error:', error);
+      set({ error });
     },
   });
 
@@ -92,6 +95,7 @@ export const useDeviceStore = create<DeviceState>((set, get) => {
     // Initial state
     connectionState: 'disconnected',
     isRealtimeActive: false,
+    error: null,
     batteryLevel: null,
     isCharging: false,
     isWorn: false,
@@ -104,6 +108,7 @@ export const useDeviceStore = create<DeviceState>((set, get) => {
 
     // Actions
     connect: async () => {
+      set({ error: null });
       return await whoopClient.connect();
     },
 
@@ -143,6 +148,10 @@ export const useDeviceStore = create<DeviceState>((set, get) => {
 
     setMaxHistoryPoints: (points) => {
       set({ maxHistoryPoints: points });
+    },
+
+    clearError: () => {
+      set({ error: null });
     },
   };
 });

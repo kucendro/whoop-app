@@ -1,8 +1,14 @@
-import React, { useMemo } from 'react';
-import { View, Text, StyleSheet, Dimensions } from 'react-native';
-import { LineChart } from 'react-native-gifted-charts';
-import { colors, spacing, fontSize, fontWeight, radius } from '@/constants/theme';
-import { downsample, interpolateAnomalies } from '@/lib/utils/hrv';
+import React, { useMemo } from "react";
+import { View, Text, StyleSheet, Dimensions } from "react-native";
+import { LineChart } from "react-native-gifted-charts";
+import {
+  colors,
+  spacing,
+  fontSize,
+  fontWeight,
+  radius,
+} from "@/constants/theme";
+import { downsample, interpolateAnomalies } from "@/lib/utils/hrv";
 
 interface HistoryChartProps {
   data: { unix: number; heartRate: number }[];
@@ -13,9 +19,9 @@ interface HistoryChartProps {
 export function HistoryChart({
   data,
   height = 200,
-  title = 'Heart Rate',
+  title = "Heart Rate",
 }: HistoryChartProps) {
-  const screenWidth = Dimensions.get('window').width;
+  const screenWidth = Dimensions.get("window").width;
   const chartWidth = screenWidth - spacing.lg * 2 - spacing.lg * 2 - 40;
 
   const { chartData, stats } = useMemo(() => {
@@ -27,9 +33,7 @@ export function HistoryChart({
     const cleaned = interpolateAnomalies(data);
     const downsampled = downsample(cleaned, 30); // 30 second intervals
 
-    const bpms = downsampled
-      .map((d) => d.heartRate)
-      .filter((b) => b >= 20);
+    const bpms = downsampled.map((d) => d.heartRate).filter((b) => b >= 20);
 
     const avg = Math.round(bpms.reduce((a, b) => a + b, 0) / bpms.length);
     const min = Math.min(...bpms);
@@ -41,12 +45,13 @@ export function HistoryChart({
 
     const points = sampled.map((point, index) => {
       const date = new Date(point.unix * 1000);
-      const showLabel = index % Math.max(1, Math.floor(sampled.length / 6)) === 0;
+      const showLabel =
+        index % Math.max(1, Math.floor(sampled.length / 6)) === 0;
       return {
         value: point.heartRate,
         label: showLabel
-          ? date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-          : '',
+          ? date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
+          : "",
         labelTextStyle: {
           color: colors.textTertiary,
           fontSize: 9,
@@ -62,7 +67,9 @@ export function HistoryChart({
     return (
       <View style={[styles.empty, { height }]}>
         <Text style={styles.emptyText}>No historical data</Text>
-        <Text style={styles.emptySubtext}>Download data from your WHOOP to see history</Text>
+        <Text style={styles.emptySubtext}>
+          Download data from your WHOOP to see history
+        </Text>
       </View>
     );
   }
@@ -77,11 +84,15 @@ export function HistoryChart({
         </View>
         <View style={styles.stat}>
           <Text style={styles.statLabel}>MIN</Text>
-          <Text style={[styles.statValue, { color: colors.hrRest }]}>{stats.min}</Text>
+          <Text style={[styles.statValue, { color: colors.hrRest }]}>
+            {stats.min}
+          </Text>
         </View>
         <View style={styles.stat}>
           <Text style={styles.statLabel}>MAX</Text>
-          <Text style={[styles.statValue, { color: colors.hrMax }]}>{stats.max}</Text>
+          <Text style={[styles.statValue, { color: colors.hrMax }]}>
+            {stats.max}
+          </Text>
         </View>
       </View>
       <LineChart
@@ -122,16 +133,16 @@ const styles = StyleSheet.create({
     fontWeight: fontWeight.semibold,
     color: colors.textSecondary,
     letterSpacing: 0.5,
-    textTransform: 'uppercase',
+    textTransform: "uppercase",
     marginBottom: spacing.md,
   },
   statsRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
+    flexDirection: "row",
+    justifyContent: "space-around",
     marginBottom: spacing.md,
   },
   stat: {
-    alignItems: 'center',
+    alignItems: "center",
   },
   statLabel: {
     fontSize: fontSize.xs,
@@ -146,12 +157,12 @@ const styles = StyleSheet.create({
     color: colors.text,
   },
   empty: {
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
     borderRadius: radius.md,
     borderWidth: 1,
     borderColor: colors.border,
-    borderStyle: 'dashed',
+    borderStyle: "dashed",
   },
   emptyText: {
     fontSize: fontSize.md,
@@ -162,7 +173,7 @@ const styles = StyleSheet.create({
     fontSize: fontSize.sm,
     color: colors.textTertiary,
     marginTop: spacing.xs,
-    textAlign: 'center',
+    textAlign: "center",
     paddingHorizontal: spacing.xl,
   },
 });

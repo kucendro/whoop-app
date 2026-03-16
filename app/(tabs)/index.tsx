@@ -1,20 +1,26 @@
-import React from 'react';
+import React from "react";
 import {
   View,
   Text,
   StyleSheet,
   ScrollView,
   TouchableOpacity,
-} from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { useRouter } from 'expo-router';
-import { useDeviceStore } from '@/lib/store/device-store';
-import { Card } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
-import { BatteryIndicator } from '@/components/device/battery-indicator';
-import { HeartRateChart } from '@/components/charts/heart-rate-chart';
-import { colors, spacing, fontSize, fontWeight, radius } from '@/constants/theme';
+} from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
+import { useRouter } from "expo-router";
+import { useDeviceStore } from "@/lib/store/device-store";
+import { Card } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { BatteryIndicator } from "@/components/device/battery-indicator";
+import { HeartRateChart } from "@/components/charts/heart-rate-chart";
+import {
+  colors,
+  spacing,
+  fontSize,
+  fontWeight,
+  radius,
+} from "@/constants/theme";
 
 export default function DashboardScreen() {
   const {
@@ -29,10 +35,10 @@ export default function DashboardScreen() {
   } = useDeviceStore();
   const router = useRouter();
 
-  const isConnected = connectionState === 'connected';
+  const isConnected = connectionState === "connected";
 
   return (
-    <SafeAreaView style={styles.container} edges={['top']}>
+    <SafeAreaView style={styles.container} edges={["top"]}>
       <ScrollView
         style={styles.scroll}
         contentContainerStyle={styles.scrollContent}
@@ -44,13 +50,13 @@ export default function DashboardScreen() {
             <Text style={styles.greeting}>WHOOP</Text>
             <View style={styles.statusRow}>
               <Badge
-                label={isConnected ? 'Connected' : 'Disconnected'}
-                variant={isConnected ? 'success' : 'error'}
+                label={isConnected ? "Connected" : "Disconnected"}
+                variant={isConnected ? "success" : "error"}
               />
               {isConnected && (
                 <Badge
-                  label={isWorn ? 'On Wrist' : 'Off Wrist'}
-                  variant={isWorn ? 'success' : 'warning'}
+                  label={isWorn ? "On Wrist" : "Off Wrist"}
+                  variant={isWorn ? "success" : "warning"}
                 />
               )}
             </View>
@@ -85,7 +91,7 @@ export default function DashboardScreen() {
                     isRealtimeActive && styles.hrToggleTextActive,
                   ]}
                 >
-                  {isRealtimeActive ? 'LIVE' : 'START'}
+                  {isRealtimeActive ? "LIVE" : "START"}
                 </Text>
               </TouchableOpacity>
             )}
@@ -93,7 +99,7 @@ export default function DashboardScreen() {
 
           <View style={styles.hrValueContainer}>
             <Text style={styles.hrValue}>
-              {currentHR !== null ? currentHR : '--'}
+              {currentHR !== null ? currentHR : "--"}
             </Text>
             <Text style={styles.hrUnit}>bpm</Text>
           </View>
@@ -108,7 +114,7 @@ export default function DashboardScreen() {
             <Card style={styles.quickStatCard}>
               <Text style={styles.quickStatLabel}>Session</Text>
               <Text style={styles.quickStatValue}>
-                {Math.floor(heartRateHistory.length / 60)}m{' '}
+                {Math.floor(heartRateHistory.length / 60)}m{" "}
                 {heartRateHistory.length % 60}s
               </Text>
             </Card>
@@ -123,17 +129,12 @@ export default function DashboardScreen() {
 
         {/* Not connected message */}
         {!isConnected && (
-          <Card variant="outlined" style={styles.disconnectedCard}>
-            <Text style={styles.disconnectedText}>
-              Connect to your WHOOP to start monitoring
-            </Text>
-            <Button
-              title="Connect WHOOP"
-              onPress={() => router.push('/connect')}
-              variant="primary"
-              style={styles.connectButton}
-            />
-          </Card>
+          <Button
+            title="Connect WHOOP"
+            onPress={() => router.push("/connect")}
+            variant="primary"
+            style={styles.connectButton}
+          />
         )}
       </ScrollView>
     </SafeAreaView>
@@ -153,9 +154,9 @@ const styles = StyleSheet.create({
     paddingBottom: spacing.xxxl,
   },
   header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "flex-start",
     paddingVertical: spacing.lg,
   },
   greeting: {
@@ -166,16 +167,16 @@ const styles = StyleSheet.create({
     marginBottom: spacing.sm,
   },
   statusRow: {
-    flexDirection: 'row',
+    flexDirection: "row",
     gap: spacing.sm,
   },
   hrCard: {
     marginBottom: spacing.lg,
   },
   hrHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     marginBottom: spacing.md,
   },
   hrLabel: {
@@ -183,11 +184,11 @@ const styles = StyleSheet.create({
     fontWeight: fontWeight.semibold,
     color: colors.textSecondary,
     letterSpacing: 0.5,
-    textTransform: 'uppercase',
+    textTransform: "uppercase",
   },
   hrToggle: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     paddingVertical: 4,
     paddingHorizontal: spacing.sm,
     borderRadius: radius.full,
@@ -216,8 +217,8 @@ const styles = StyleSheet.create({
     color: colors.accent,
   },
   hrValueContainer: {
-    flexDirection: 'row',
-    alignItems: 'baseline',
+    flexDirection: "row",
+    alignItems: "baseline",
     marginBottom: spacing.lg,
   },
   hrValue: {
@@ -233,7 +234,7 @@ const styles = StyleSheet.create({
     marginLeft: spacing.sm,
   },
   quickStats: {
-    flexDirection: 'row',
+    flexDirection: "row",
     gap: spacing.md,
     marginBottom: spacing.lg,
   },
@@ -245,7 +246,7 @@ const styles = StyleSheet.create({
     fontWeight: fontWeight.medium,
     color: colors.textTertiary,
     letterSpacing: 0.5,
-    textTransform: 'uppercase',
+    textTransform: "uppercase",
     marginBottom: spacing.xs,
   },
   quickStatValue: {
@@ -254,16 +255,16 @@ const styles = StyleSheet.create({
     color: colors.text,
   },
   disconnectedCard: {
-    alignItems: 'center',
+    alignItems: "center",
     paddingVertical: spacing.xxxl,
   },
   disconnectedText: {
     fontSize: fontSize.md,
     color: colors.textTertiary,
-    textAlign: 'center',
+    textAlign: "center",
     marginBottom: spacing.lg,
   },
   connectButton: {
-    width: '100%',
+    width: "100%",
   },
 });

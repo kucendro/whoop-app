@@ -1,34 +1,45 @@
-import React from 'react';
+import React from "react";
 import {
   View,
   Text,
   StyleSheet,
   ActivityIndicator,
   TouchableOpacity,
-} from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { useRouter } from 'expo-router';
-import { useDeviceStore } from '@/lib/store/device-store';
-import { Button } from '@/components/ui/button';
-import { colors, spacing, fontSize, fontWeight, radius } from '@/constants/theme';
+} from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
+import { useRouter } from "expo-router";
+import { useDeviceStore } from "@/lib/store/device-store";
+import { Button } from "@/components/ui/button";
+import {
+  colors,
+  spacing,
+  fontSize,
+  fontWeight,
+  radius,
+} from "@/constants/theme";
 
 export default function ConnectScreen() {
-  const { connectionState, connect } = useDeviceStore();
+  const { connectionState, error, connect, clearError } = useDeviceStore();
   const router = useRouter();
 
-  const isScanning = connectionState === 'scanning';
-  const isConnecting = connectionState === 'connecting';
+  const isScanning = connectionState === "scanning";
+  const isConnecting = connectionState === "connecting";
   const isBusy = isScanning || isConnecting;
 
   const getStatusText = () => {
     switch (connectionState) {
-      case 'scanning':
-        return 'Scanning for WHOOP...';
-      case 'connecting':
-        return 'Connecting...';
+      case "scanning":
+        return "Scanning for WHOOP...";
+      case "connecting":
+        return "Connecting...";
       default:
-        return 'Not connected';
+        return "Not connected";
     }
+  };
+
+  const handleConnect = () => {
+    clearError();
+    connect();
   };
 
   return (
@@ -54,7 +65,8 @@ export default function ConnectScreen() {
 
           <Text style={styles.title}>WHOOP</Text>
           <Text style={styles.subtitle}>
-            Connect to your WHOOP 4.0 strap to start tracking your heart rate and recovery data.
+            Connect to your WHOOP 4.0 strap to start tracking your heart rate
+            and recovery data.
           </Text>
         </View>
 
@@ -64,9 +76,14 @@ export default function ConnectScreen() {
         </View>
 
         <View style={styles.actions}>
+          {error && (
+            <View style={styles.errorContainer}>
+              <Text style={styles.errorText}>{error}</Text>
+            </View>
+          )}
           <Button
-            title={isBusy ? 'Searching...' : 'Connect WHOOP'}
-            onPress={connect}
+            title={isBusy ? "Searching..." : "Connect WHOOP"}
+            onPress={handleConnect}
             variant="primary"
             size="lg"
             loading={isBusy}
@@ -74,7 +91,8 @@ export default function ConnectScreen() {
           />
 
           <Text style={styles.hint}>
-            Make sure your WHOOP is charged, on your wrist, and Bluetooth is enabled
+            Make sure your WHOOP is charged, on your wrist, and Bluetooth is
+            enabled
           </Text>
         </View>
       </View>
@@ -88,8 +106,8 @@ const styles = StyleSheet.create({
     backgroundColor: colors.bg,
   },
   topBar: {
-    flexDirection: 'row',
-    justifyContent: 'flex-end',
+    flexDirection: "row",
+    justifyContent: "flex-end",
     paddingHorizontal: spacing.lg,
     paddingTop: spacing.sm,
   },
@@ -101,10 +119,10 @@ const styles = StyleSheet.create({
   content: {
     flex: 1,
     paddingHorizontal: spacing.xxl,
-    justifyContent: 'center',
+    justifyContent: "center",
   },
   header: {
-    alignItems: 'center',
+    alignItems: "center",
     marginBottom: spacing.xxxl,
   },
   logoContainer: {
@@ -116,16 +134,16 @@ const styles = StyleSheet.create({
     borderRadius: 50,
     borderWidth: 2,
     borderColor: colors.accent,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
   },
   logoInner: {
     width: 80,
     height: 80,
     borderRadius: 40,
     backgroundColor: colors.bgCard,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
   },
   logoText: {
     fontSize: 32,
@@ -142,14 +160,14 @@ const styles = StyleSheet.create({
   subtitle: {
     fontSize: fontSize.md,
     color: colors.textSecondary,
-    textAlign: 'center',
+    textAlign: "center",
     lineHeight: 22,
     paddingHorizontal: spacing.lg,
   },
   statusContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
     marginBottom: spacing.xxxl,
   },
   statusDot: {
@@ -167,17 +185,32 @@ const styles = StyleSheet.create({
     color: colors.textSecondary,
   },
   actions: {
-    alignItems: 'center',
+    alignItems: "center",
+  },
+  errorContainer: {
+    backgroundColor: "#1A0000",
+    borderWidth: 1,
+    borderColor: colors.error,
+    borderRadius: radius.md,
+    padding: spacing.md,
+    marginBottom: spacing.lg,
+    width: "100%",
+  },
+  errorText: {
+    fontSize: fontSize.sm,
+    color: colors.error,
+    textAlign: "center",
+    lineHeight: 20,
   },
   connectButton: {
-    width: '100%',
+    width: "100%",
     paddingVertical: spacing.lg,
     borderRadius: radius.lg,
   },
   hint: {
     fontSize: fontSize.xs,
     color: colors.textTertiary,
-    textAlign: 'center',
+    textAlign: "center",
     marginTop: spacing.lg,
     lineHeight: 18,
     paddingHorizontal: spacing.lg,
