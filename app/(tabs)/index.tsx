@@ -1,26 +1,47 @@
-import React from "react";
+import React, { useState, useCallback, useMemo } from 'react';
 import {
   View,
   Text,
   StyleSheet,
   ScrollView,
   TouchableOpacity,
-} from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
-import { useRouter } from "expo-router";
-import { useDeviceStore } from "@/lib/store/device-store";
-import { Card } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { BatteryIndicator } from "@/components/device/battery-indicator";
-import { HeartRateChart } from "@/components/charts/heart-rate-chart";
+  ActivityIndicator,
+  Dimensions,
+} from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { useRouter } from 'expo-router';
+import { useFocusEffect } from '@react-navigation/native';
+import { LineChart } from 'react-native-gifted-charts';
+import { useDeviceStore } from '@/lib/store/device-store';
+import { Card } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { BatteryIndicator } from '@/components/device/battery-indicator';
+import { HeartRateChart } from '@/components/charts/heart-rate-chart';
+// import { AISummary } from '@/components/insights/ai-summary';
+import {
+  getLast24HoursHourlyStats,
+  getLast24HoursHourlyRRIntervals,
+  getStats,
+  HourlyStats,
+} from '@/lib/storage/database';
 import {
   colors,
   spacing,
   fontSize,
   fontWeight,
   radius,
-} from "@/constants/theme";
+} from '@/constants/theme';
+
+// ─── HR color mapping (teal → coral based on BPM) ─────────────────────────────
+function hrColor(bpm: number): string {
+  if (bpm <= 0) return colors.textTertiary;
+  if (bpm < 60) return colors.hrRest;      // teal — resting
+  if (bpm < 80) return colors.hrLight;      // green — light
+  if (bpm < 100) return colors.hrModerate;  // amber — moderate
+  if (bpm < 140) return colors.hrHard;      // orange — hard
+  return colors.hrMax;                       // coral — max
+}
 
 export default function DashboardScreen() {
   const {
@@ -35,10 +56,87 @@ export default function DashboardScreen() {
   } = useDeviceStore();
   const router = useRouter();
 
-  const isConnected = connectionState === "connected";
+  const isConnected = connectionState === 'connected';
+
+  // 24h overview data
+  const [hourlyStats, setHourlyStats] = useState<HourlyStats[]>([]);
+  const [hourlyRR, setHourlyRR] = useState<{ hour: number; rrIntervals: number[] }[]>([]);
+  const [overviewStats, setOverviewStats] = useState<{
+    avgHR: number;
+    minHR: number;
+    maxHR: number;
+    totalRecords: number;
+  } | null>(null);
+  const [loadingOverview, setLoadingOverview] = useState(true);
+
+  // Load 24h data when tab gets focus
+  useFocusEffect(
+    useCallback(() => {
+      let cancelled = false;
+
+      async function load() {
+        setLoadingOverview(true);
+        try {
+          const now = Math.floor(Date.now() / 1000);
+          const twentyFourHoursAgo = now - 24 * 60 * 60;
+
+          const [stats, hourly, rr] = await Promise.all([
+            getStats(twentyFourHoursAgo, now),
+            getLast24HoursHourlyStats(),
+            getLast24HoursHourlyRRIntervals(),
+          ]);
+
+          if (!cancelled) {
+            setOverviewStats(stats);
+            setHourlyStats(hourly);
+            setHourlyRR(rr);
+          }
+        } catch (err) {
+          console.error('Failed to load 24h overview:', err);
+        } finally {
+          if (!cancelled) setLoadingOverview(false);
+        }
+      }
+
+      load();
+      return () => {
+        cancelled = true;
+      };
+    }, [])
+  );
+
+  // ─── Sparkline data ────────────────────────────────────────────────────────
+  const screenWidth = Dimensions.get('window').width;
+  const sparklineWidth = screenWidth - spacing.lg * 2 - spacing.lg * 2;
+
+  const sparklineData = useMemo(() => {
+    const statsMap = new Map(hourlyStats.map((s) => [s.hour, s]));
+    const points: { value: number; frontColor: string; label: string }[] = [];
+
+    for (let h = 0; h < 24; h++) {
+      const stats = statsMap.get(h);
+      const avg = stats ? stats.avgHR : 0;
+      points.push({
+        value: avg,
+        frontColor: hrColor(avg),
+        label: '',
+      });
+    }
+    return points;
+  }, [hourlyStats]);
+
+  const sparklineRange = useMemo(() => {
+    const valid = sparklineData.map((p) => p.value).filter((v) => v > 0);
+    return {
+      min: valid.length ? Math.max(30, Math.min(...valid) - 10) : 40,
+      max: valid.length ? Math.min(200, Math.max(...valid) + 10) : 120,
+    };
+  }, [sparklineData]);
+
+  const has24hData = overviewStats !== null && overviewStats.totalRecords > 0;
 
   return (
-    <SafeAreaView style={styles.container} edges={["top"]}>
+    <SafeAreaView style={styles.container} edges={['top']}>
       <ScrollView
         style={styles.scroll}
         contentContainerStyle={styles.scrollContent}
@@ -50,13 +148,13 @@ export default function DashboardScreen() {
             <Text style={styles.greeting}>WHOOP</Text>
             <View style={styles.statusRow}>
               <Badge
-                label={isConnected ? "Connected" : "Disconnected"}
-                variant={isConnected ? "success" : "error"}
+                label={isConnected ? 'Connected' : 'Disconnected'}
+                variant={isConnected ? 'success' : 'error'}
               />
               {isConnected && (
                 <Badge
-                  label={isWorn ? "On Wrist" : "Off Wrist"}
-                  variant={isWorn ? "success" : "warning"}
+                  label={isWorn ? 'On Wrist' : 'Off Wrist'}
+                  variant={isWorn ? 'success' : 'warning'}
                 />
               )}
             </View>
@@ -66,10 +164,62 @@ export default function DashboardScreen() {
           )}
         </View>
 
-        {/* Heart Rate Display */}
+        {/* ── Last 24 Hours: minimal sparkline ─────────────────────────────── */}
+        <Card style={styles.overviewCard}>
+          <View style={styles.overviewHeader}>
+            <Text style={styles.overviewLabel}>Last 24 Hours</Text>
+            {loadingOverview && (
+              <ActivityIndicator size="small" color={colors.accent} />
+            )}
+          </View>
+
+          {!loadingOverview && has24hData && (
+            <>
+              {/* Average BPM — large prominent number */}
+              <View style={styles.avgRow}>
+                <Text style={styles.avgValue}>{overviewStats!.avgHR}</Text>
+                <Text style={styles.avgUnit}>avg bpm</Text>
+              </View>
+
+              {/* Tiny sparkline — no axes, color-coded */}
+              <View style={styles.sparklineWrap}>
+                <LineChart
+                  data={sparklineData}
+                  height={50}
+                  width={sparklineWidth}
+                  adjustToWidth
+                  color={colors.accent}
+                  thickness={2}
+                  hideDataPoints
+                  curved
+                  hideYAxisText
+                  yAxisColor={colors.transparent}
+                  xAxisColor={colors.transparent}
+                  hideRules
+                  maxValue={sparklineRange.max}
+                  yAxisOffset={sparklineRange.min}
+                  startFillColor={colors.accent}
+                  endFillColor={colors.bg}
+                  startOpacity={0.15}
+                  endOpacity={0}
+                  areaChart
+                  isAnimated={false}
+                />
+              </View>
+            </>
+          )}
+
+          {!loadingOverview && !has24hData && (
+            <Text style={styles.overviewEmpty}>
+              No data — download history from your WHOOP
+            </Text>
+          )}
+        </Card>
+
+        {/* ── Real-time Heart Rate ─────────────────────────────────────────── */}
         <Card style={styles.hrCard}>
           <View style={styles.hrHeader}>
-            <Text style={styles.hrLabel}>Heart Rate</Text>
+            <Text style={styles.sectionTitle}>Heart Rate</Text>
             {isConnected && (
               <TouchableOpacity
                 onPress={toggleRealtimeHR}
@@ -91,7 +241,7 @@ export default function DashboardScreen() {
                     isRealtimeActive && styles.hrToggleTextActive,
                   ]}
                 >
-                  {isRealtimeActive ? "LIVE" : "START"}
+                  {isRealtimeActive ? 'LIVE' : 'START'}
                 </Text>
               </TouchableOpacity>
             )}
@@ -99,39 +249,22 @@ export default function DashboardScreen() {
 
           <View style={styles.hrValueContainer}>
             <Text style={styles.hrValue}>
-              {currentHR !== null ? currentHR : "--"}
+              {currentHR !== null ? currentHR : '--'}
             </Text>
             <Text style={styles.hrUnit}>bpm</Text>
           </View>
 
-          {/* Heart Rate Chart */}
-          <HeartRateChart data={heartRateHistory} />
+          <HeartRateChart data={heartRateHistory} scrollable />
         </Card>
 
-        {/* Quick Stats */}
-        {heartRateHistory.length > 0 && (
-          <View style={styles.quickStats}>
-            <Card style={styles.quickStatCard}>
-              <Text style={styles.quickStatLabel}>Session</Text>
-              <Text style={styles.quickStatValue}>
-                {Math.floor(heartRateHistory.length / 60)}m{" "}
-                {heartRateHistory.length % 60}s
-              </Text>
-            </Card>
-            <Card style={styles.quickStatCard}>
-              <Text style={styles.quickStatLabel}>Samples</Text>
-              <Text style={styles.quickStatValue}>
-                {heartRateHistory.length}
-              </Text>
-            </Card>
-          </View>
-        )}
+        {/* ── AI Summary (temporarily disabled) ─────────────────────────── */}
+        {/* <AISummary /> */}
 
         {/* Not connected message */}
         {!isConnected && (
           <Button
             title="Connect WHOOP"
-            onPress={() => router.push("/connect")}
+            onPress={() => router.push('/connect')}
             variant="primary"
             style={styles.connectButton}
           />
@@ -154,9 +287,9 @@ const styles = StyleSheet.create({
     paddingBottom: spacing.xxxl,
   },
   header: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "flex-start",
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
     paddingVertical: spacing.lg,
   },
   greeting: {
@@ -167,32 +300,76 @@ const styles = StyleSheet.create({
     marginBottom: spacing.sm,
   },
   statusRow: {
-    flexDirection: "row",
+    flexDirection: 'row',
     gap: spacing.sm,
+  },
+
+  // ── 24h Overview (minimal) ─────────────────────────────────────────────────
+  overviewCard: {
+    marginBottom: spacing.lg,
+  },
+  overviewHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: spacing.sm,
+  },
+  overviewLabel: {
+    fontSize: fontSize.xs,
+    fontWeight: fontWeight.semibold,
+    color: colors.textTertiary,
+    letterSpacing: 0.5,
+    textTransform: 'uppercase',
+  },
+  avgRow: {
+    flexDirection: 'row',
+    alignItems: 'baseline',
+    marginBottom: spacing.sm,
+  },
+  avgValue: {
+    fontSize: fontSize.xxl,
+    fontWeight: fontWeight.bold,
+    color: colors.text,
+  },
+  avgUnit: {
+    fontSize: fontSize.sm,
+    color: colors.textTertiary,
+    marginLeft: spacing.sm,
+  },
+  sparklineWrap: {
+    marginHorizontal: -spacing.lg, // bleed to card edges
+    overflow: 'hidden',
+  },
+  overviewEmpty: {
+    fontSize: fontSize.sm,
+    color: colors.textTertiary,
+    paddingVertical: spacing.md,
+  },
+
+  // ── Heart Rate Card ────────────────────────────────────────────────────────
+  sectionTitle: {
+    fontSize: fontSize.sm,
+    fontWeight: fontWeight.semibold,
+    color: colors.textSecondary,
+    letterSpacing: 0.5,
+    textTransform: 'uppercase',
   },
   hrCard: {
     marginBottom: spacing.lg,
   },
   hrHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
     marginBottom: spacing.md,
   },
-  hrLabel: {
-    fontSize: fontSize.sm,
-    fontWeight: fontWeight.semibold,
-    color: colors.textSecondary,
-    letterSpacing: 0.5,
-    textTransform: "uppercase",
-  },
   hrToggle: {
-    flexDirection: "row",
-    alignItems: "center",
+    flexDirection: 'row',
+    alignItems: 'center',
     paddingVertical: 4,
     paddingHorizontal: spacing.sm,
     borderRadius: radius.full,
-    backgroundColor: colors.bgCardHover,
+    backgroundColor: colors.bgElevated,
     gap: spacing.xs,
   },
   hrToggleActive: {
@@ -217,8 +394,8 @@ const styles = StyleSheet.create({
     color: colors.accent,
   },
   hrValueContainer: {
-    flexDirection: "row",
-    alignItems: "baseline",
+    flexDirection: 'row',
+    alignItems: 'baseline',
     marginBottom: spacing.lg,
   },
   hrValue: {
@@ -233,38 +410,7 @@ const styles = StyleSheet.create({
     color: colors.textTertiary,
     marginLeft: spacing.sm,
   },
-  quickStats: {
-    flexDirection: "row",
-    gap: spacing.md,
-    marginBottom: spacing.lg,
-  },
-  quickStatCard: {
-    flex: 1,
-  },
-  quickStatLabel: {
-    fontSize: fontSize.xs,
-    fontWeight: fontWeight.medium,
-    color: colors.textTertiary,
-    letterSpacing: 0.5,
-    textTransform: "uppercase",
-    marginBottom: spacing.xs,
-  },
-  quickStatValue: {
-    fontSize: fontSize.lg,
-    fontWeight: fontWeight.bold,
-    color: colors.text,
-  },
-  disconnectedCard: {
-    alignItems: "center",
-    paddingVertical: spacing.xxxl,
-  },
-  disconnectedText: {
-    fontSize: fontSize.md,
-    color: colors.textTertiary,
-    textAlign: "center",
-    marginBottom: spacing.lg,
-  },
   connectButton: {
-    width: "100%",
+    width: '100%',
   },
 });

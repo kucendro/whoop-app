@@ -46,7 +46,7 @@ export function Button({
       {loading ? (
         <ActivityIndicator
           size="small"
-          color={variant === 'primary' ? colors.black : colors.text}
+          color={variant === 'primary' ? colors.white : colors.text}
         />
       ) : (
         <Text
@@ -96,13 +96,13 @@ const sizeTextStyles: Record<string, TextStyle> = {
 
 const variantStyles: Record<string, ViewStyle> = {
   primary: { backgroundColor: colors.accent },
-  secondary: { backgroundColor: colors.bgCard, borderWidth: 1, borderColor: colors.border },
+  secondary: { backgroundColor: colors.bgElevated, borderWidth: 1, borderColor: colors.border },
   ghost: { backgroundColor: colors.transparent },
   danger: { backgroundColor: colors.error },
 };
 
 const variantTextStyles: Record<string, TextStyle> = {
-  primary: { color: colors.black },
+  primary: { color: colors.white },
   secondary: { color: colors.text },
   ghost: { color: colors.textSecondary },
   danger: { color: colors.white },

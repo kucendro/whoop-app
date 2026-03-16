@@ -532,7 +532,11 @@ class WhoopClient {
         }
 
         // Extract trim value and request next batch
-        const dataView = new DataView(metapkt.data.buffer);
+        const dataView = new DataView(
+          metapkt.data.buffer,
+          metapkt.data.byteOffset,
+          metapkt.data.byteLength
+        );
         const trim = dataView.getUint32(10, true);
 
         const responseData = new Uint8Array(9);

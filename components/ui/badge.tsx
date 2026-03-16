@@ -49,7 +49,7 @@ const textSizes: Record<string, { fontSize: number }> = {
 };
 
 const badgeVariants: Record<string, ViewStyle> = {
-  default: { backgroundColor: colors.bgCard },
+  default: { backgroundColor: colors.bgElevated },
   success: { backgroundColor: colors.success + '18' },
   warning: { backgroundColor: colors.warning + '18' },
   error: { backgroundColor: colors.error + '18' },

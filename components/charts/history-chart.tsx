@@ -14,12 +14,14 @@ interface HistoryChartProps {
   data: { unix: number; heartRate: number }[];
   height?: number;
   title?: string;
+  scrollable?: boolean;
 }
 
 export function HistoryChart({
   data,
   height = 200,
   title = "Heart Rate",
+  scrollable = true,
 }: HistoryChartProps) {
   const screenWidth = Dimensions.get("window").width;
   const chartWidth = screenWidth - spacing.lg * 2 - spacing.lg * 2 - 40;
@@ -29,39 +31,31 @@ export function HistoryChart({
       return { chartData: [], stats: { avg: 0, min: 0, max: 0 } };
     }
 
-    // Interpolate anomalies and downsample
     const cleaned = interpolateAnomalies(data);
-    const downsampled = downsample(cleaned, 30); // 30 second intervals
+    const downsampled = downsample(cleaned, 30);
 
     const bpms = downsampled.map((d) => d.heartRate).filter((b) => b >= 20);
-
     const avg = Math.round(bpms.reduce((a, b) => a + b, 0) / bpms.length);
     const min = Math.min(...bpms);
     const max = Math.max(...bpms);
 
-    const maxPoints = 80;
+    const maxPoints = scrollable ? 200 : 80;
     const step = Math.max(1, Math.floor(downsampled.length / maxPoints));
     const sampled = downsampled.filter((_, i) => i % step === 0);
 
-    const points = sampled.map((point, index) => {
+    const points = sampled.map((point) => {
       const date = new Date(point.unix * 1000);
-      const showLabel =
-        index % Math.max(1, Math.floor(sampled.length / 6)) === 0;
       return {
         value: point.heartRate,
-        label: showLabel
-          ? date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
-          : "",
-        labelTextStyle: {
-          color: colors.textTertiary,
-          fontSize: 9,
-          width: 40,
-        },
+        label: "", // No x-axis labels — shown via tooltip only
+        dataPointText: date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+        textShiftY: -999,
+        textShiftX: -999,
       };
     });
 
     return { chartData: points, stats: { avg, min, max } };
-  }, [data]);
+  }, [data, scrollable]);
 
   if (chartData.length === 0) {
     return (
@@ -74,9 +68,13 @@ export function HistoryChart({
     );
   }
 
+  const pointSpacing = scrollable
+    ? Math.max(4, Math.min(8, chartWidth / chartData.length))
+    : undefined;
+
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>{title}</Text>
+      {title && <Text style={styles.title}>{title}</Text>}
       <View style={styles.statsRow}>
         <View style={styles.stat}>
           <Text style={styles.statLabel}>AVG</Text>
@@ -99,15 +97,16 @@ export function HistoryChart({
         data={chartData}
         height={height}
         width={chartWidth}
-        adjustToWidth
+        spacing={pointSpacing}
+        adjustToWidth={!scrollable}
+        scrollToEnd={scrollable}
         color={colors.accent}
         thickness={1.5}
         hideDataPoints
         curved
         yAxisTextStyle={{ color: colors.textTertiary, fontSize: 10 }}
-        xAxisLabelTextStyle={{ color: colors.textTertiary, fontSize: 9 }}
         yAxisColor={colors.transparent}
-        xAxisColor={colors.border}
+        xAxisColor={colors.transparent}
         rulesColor={colors.borderSubtle}
         rulesType="dashed"
         noOfSections={4}
@@ -119,6 +118,26 @@ export function HistoryChart({
         endOpacity={0}
         areaChart
         isAnimated={false}
+        pointerConfig={{
+          pointerStripColor: colors.textTertiary,
+          pointerStripWidth: 1,
+          pointerColor: colors.accent,
+          radius: 4,
+          pointerLabelWidth: 100,
+          pointerLabelHeight: 44,
+          pointerLabelComponent: (items: any) => {
+            const val = items[0]?.value ?? 0;
+            const timeStr = items[0]?.dataPointText ?? "";
+            return (
+              <View style={styles.tooltip}>
+                <Text style={styles.tooltipValue}>{val} bpm</Text>
+                {timeStr ? (
+                  <Text style={styles.tooltipTime}>{timeStr}</Text>
+                ) : null}
+              </View>
+            );
+          },
+        }}
       />
     </View>
   );
@@ -175,5 +194,25 @@ const styles = StyleSheet.create({
     marginTop: spacing.xs,
     textAlign: "center",
     paddingHorizontal: spacing.xl,
+  },
+  tooltip: {
+    backgroundColor: colors.bgElevated,
+    borderRadius: radius.sm,
+    padding: spacing.xs,
+    borderWidth: 1,
+    borderColor: colors.border,
+    alignItems: "center",
+  },
+  tooltipValue: {
+    fontSize: fontSize.xs,
+    fontWeight: fontWeight.semibold,
+    color: colors.accent,
+    textAlign: "center",
+  },
+  tooltipTime: {
+    fontSize: 9,
+    color: colors.textTertiary,
+    textAlign: "center",
+    marginTop: 2,
   },
 });

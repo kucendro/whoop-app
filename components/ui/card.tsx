@@ -25,7 +25,9 @@ const styles = StyleSheet.create({
 
 const variants: Record<string, ViewStyle> = {
   default: {
-    backgroundColor: colors.bgCard,
+    backgroundColor: colors.bg,
+    borderWidth: 1,
+    borderColor: colors.border,
   },
   elevated: {
     backgroundColor: colors.bgElevated,

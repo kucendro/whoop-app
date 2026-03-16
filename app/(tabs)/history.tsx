@@ -5,12 +5,13 @@ import {
   StyleSheet,
   ScrollView,
   TouchableOpacity,
+  ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useFocusEffect } from '@react-navigation/native';
+import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { useDeviceStore } from '@/lib/store/device-store';
 import { Card } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
 import { HistoryChart } from '@/components/charts/history-chart';
 import {
   saveHistoricalRecords,
@@ -49,6 +50,7 @@ export default function HistoryScreen() {
   } | null>(null);
   const [totalRecords, setTotalRecords] = useState(0);
   const [saving, setSaving] = useState(false);
+  const [loadingData, setLoadingData] = useState(false);
 
   // Load available dates
   const loadDates = useCallback(async () => {
@@ -59,28 +61,40 @@ export default function HistoryScreen() {
     if (dates.length > 0 && !selectedDate) {
       setSelectedDate(dates[0]);
     }
-  }, [selectedDate]);
+    // If data was cleared and there are no dates, reset selection
+    if (dates.length === 0) {
+      setSelectedDate(null);
+      setChartData([]);
+      setStats(null);
+      setHrvData(null);
+    }
+  }, []); // no deps -- only auto-selects first date if none selected
 
-  useEffect(() => {
-    loadDates();
-  }, [loadDates]);
+  // Reload dates every time this tab comes into focus
+  useFocusEffect(
+    useCallback(() => {
+      loadDates();
+    }, [loadDates])
+  );
 
   // Load data for selected date
   useEffect(() => {
     if (!selectedDate) return;
 
     const loadData = async () => {
+      setLoadingData(true);
       const startOfDay = new Date(selectedDate + 'T00:00:00').getTime() / 1000;
       const endOfDay = startOfDay + 86400;
 
-      const records = await getHeartRateRecords(startOfDay, endOfDay);
-      setChartData(records);
+      const [records, dateStats, rrIntervals] = await Promise.all([
+        getHeartRateRecords(startOfDay, endOfDay),
+        getStats(startOfDay, endOfDay),
+        getRRIntervals(startOfDay, endOfDay),
+      ]);
 
-      const dateStats = await getStats(startOfDay, endOfDay);
+      setChartData(records);
       setStats(dateStats);
 
-      // Load RR intervals for HRV
-      const rrIntervals = await getRRIntervals(startOfDay, endOfDay);
       if (rrIntervals.length > 10) {
         const hrv = calculateHRV(rrIntervals);
         const rmssd = calculateRMSSD(rrIntervals);
@@ -89,6 +103,7 @@ export default function HistoryScreen() {
       } else {
         setHrvData(null);
       }
+      setLoadingData(false);
     };
 
     loadData();
@@ -96,16 +111,32 @@ export default function HistoryScreen() {
 
   // Save new records when history download completes
   useEffect(() => {
-    if (historyStatus === 'complete' && historicalRecords.length > 0) {
-      const save = async () => {
-        setSaving(true);
+    if (historyStatus !== 'complete' || historicalRecords.length === 0) return;
+
+    let cancelled = false;
+
+    const save = async () => {
+      setSaving(true);
+      try {
         await saveHistoricalRecords(historicalRecords);
-        setSaving(false);
+        if (cancelled) return;
+        useDeviceStore.setState({ historicalRecords: [], historyStatus: 'idle' });
         await loadDates();
-      };
-      save();
-    }
-  }, [historyStatus, historicalRecords.length]);
+      } catch (err) {
+        console.error('Failed to save historical records:', err);
+        if (!cancelled) {
+          useDeviceStore.setState({ historyStatus: 'error' });
+        }
+      } finally {
+        setSaving(false);
+      }
+    };
+    save();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [historyStatus]);
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
@@ -115,52 +146,43 @@ export default function HistoryScreen() {
         showsVerticalScrollIndicator={false}
       >
         <View style={styles.header}>
-          <Text style={styles.title}>History</Text>
-          <Text style={styles.subtitle}>
-            {totalRecords > 0
-              ? `${totalRecords.toLocaleString()} records stored`
-              : 'No data stored yet'}
-          </Text>
+          <View>
+            <Text style={styles.title}>History</Text>
+            <Text style={styles.subtitle}>
+              {historyStatus === 'downloading'
+                ? `Downloading... ${historicalRecords.length} records`
+                : saving
+                ? 'Saving records...'
+                : totalRecords > 0
+                ? `${totalRecords.toLocaleString()} records stored`
+                : 'No data stored yet'}
+            </Text>
+          </View>
+
+          {isConnected && (
+            <TouchableOpacity
+              style={styles.syncButton}
+              onPress={downloadHistory}
+              disabled={historyStatus === 'downloading' || saving}
+              activeOpacity={0.6}
+            >
+              {historyStatus === 'downloading' || saving ? (
+                <ActivityIndicator size="small" color={colors.accent} />
+              ) : (
+                <MaterialIcons name="sync" size={22} color={colors.accent} />
+              )}
+            </TouchableOpacity>
+          )}
         </View>
 
-        {/* Download Section */}
-        {isConnected && (
-          <Card style={styles.downloadCard}>
-            <View style={styles.downloadHeader}>
-              <View>
-                <Text style={styles.downloadTitle}>Download from WHOOP</Text>
-                <Text style={styles.downloadSubtitle}>
-                  Sync historical heart rate data
-                </Text>
-              </View>
-              {historyStatus === 'downloading' && (
-                <Badge label={`${historicalRecords.length} records`} variant="info" />
-              )}
-            </View>
-
-            <Button
-              title={
-                historyStatus === 'downloading'
-                  ? `Downloading... (${historicalRecords.length})`
-                  : saving
-                  ? 'Saving...'
-                  : 'Download History'
-              }
-              onPress={downloadHistory}
-              variant="secondary"
-              loading={historyStatus === 'downloading' || saving}
-              disabled={historyStatus === 'downloading' || saving}
-            />
-
-            {historyStatus === 'complete' && (
-              <Text style={styles.successText}>
-                Download complete - {historicalRecords.length} records saved
-              </Text>
-            )}
-            {historyStatus === 'error' && (
-              <Text style={styles.errorText}>Download failed. Try again.</Text>
-            )}
-          </Card>
+        {/* Download status messages */}
+        {historyStatus === 'complete' && (
+          <Text style={styles.statusText}>
+            Download complete - {historicalRecords.length} records saved
+          </Text>
+        )}
+        {historyStatus === 'error' && (
+          <Text style={styles.errorText}>Download failed. Try again.</Text>
         )}
 
         {/* Date Selector */}
@@ -197,7 +219,13 @@ export default function HistoryScreen() {
         {/* Chart */}
         {selectedDate && (
           <Card style={styles.chartCard}>
-            <HistoryChart data={chartData} title={`Heart Rate - ${formatDate(selectedDate)}`} />
+            {loadingData ? (
+              <View style={styles.chartLoading}>
+                <ActivityIndicator size="small" color={colors.accent} />
+              </View>
+            ) : (
+              <HistoryChart data={chartData} title={`Heart Rate - ${formatDate(selectedDate)}`} />
+            )}
           </Card>
         )}
 
@@ -291,6 +319,9 @@ const styles = StyleSheet.create({
     paddingBottom: spacing.xxxl,
   },
   header: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
     paddingVertical: spacing.lg,
   },
   title: {
@@ -304,32 +335,24 @@ const styles = StyleSheet.create({
     fontSize: fontSize.sm,
     color: colors.textSecondary,
   },
-  downloadCard: {
-    marginBottom: spacing.lg,
-    gap: spacing.md,
+  syncButton: {
+    width: 40,
+    height: 40,
+    borderRadius: radius.full,
+    borderWidth: 1,
+    borderColor: colors.border,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  downloadHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
-  },
-  downloadTitle: {
-    fontSize: fontSize.md,
-    fontWeight: fontWeight.semibold,
-    color: colors.text,
-    marginBottom: 2,
-  },
-  downloadSubtitle: {
-    fontSize: fontSize.sm,
-    color: colors.textSecondary,
-  },
-  successText: {
+  statusText: {
     fontSize: fontSize.sm,
     color: colors.success,
+    marginBottom: spacing.md,
   },
   errorText: {
     fontSize: fontSize.sm,
     color: colors.error,
+    marginBottom: spacing.md,
   },
   dateScroll: {
     marginBottom: spacing.lg,
@@ -343,7 +366,7 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.sm,
     paddingHorizontal: spacing.md,
     borderRadius: radius.full,
-    backgroundColor: colors.bgCard,
+    backgroundColor: colors.bg,
     borderWidth: 1,
     borderColor: colors.border,
   },
@@ -361,6 +384,10 @@ const styles = StyleSheet.create({
   },
   chartCard: {
     marginBottom: spacing.lg,
+  },
+  chartLoading: {
+    paddingVertical: spacing.xxxl,
+    alignItems: 'center',
   },
   statsGrid: {
     flexDirection: 'row',

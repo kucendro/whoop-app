@@ -141,7 +141,7 @@ const styles = StyleSheet.create({
     width: 80,
     height: 80,
     borderRadius: 40,
-    backgroundColor: colors.bgCard,
+    backgroundColor: colors.bgElevated,
     justifyContent: "center",
     alignItems: "center",
   },
@@ -188,7 +188,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   errorContainer: {
-    backgroundColor: "#1A0000",
+    backgroundColor: colors.bgElevated,
     borderWidth: 1,
     borderColor: colors.error,
     borderRadius: radius.md,

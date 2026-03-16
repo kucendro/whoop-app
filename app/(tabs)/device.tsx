@@ -14,7 +14,8 @@ import { Button } from '@/components/ui/button';
 import { StatusRow } from '@/components/device/status-row';
 import { BatteryIndicator } from '@/components/device/battery-indicator';
 import { clearAllData } from '@/lib/storage/database';
-import { colors, spacing, fontSize, fontWeight } from '@/constants/theme';
+// import { hasApiKey, setApiKey, clearApiKey, getApiKey } from '@/lib/services/ai';
+import { colors, spacing, fontSize, fontWeight, radius } from '@/constants/theme';
 
 export default function DeviceScreen() {
   const {
@@ -33,6 +34,62 @@ export default function DeviceScreen() {
   const isConnected = connectionState === 'connected';
   const [clearingData, setClearingData] = useState(false);
 
+  // ── API Key state (temporarily disabled) ────────────────────────────────
+  // const [keyConfigured, setKeyConfigured] = useState(false);
+  // const [showKeyInput, setShowKeyInput] = useState(false);
+  // const [keyInput, setKeyInput] = useState('');
+  // const [maskedKey, setMaskedKey] = useState('');
+
+  // useEffect(() => {
+  //   loadKeyState();
+  // }, []);
+
+  // async function loadKeyState() {
+  //   const has = await hasApiKey();
+  //   setKeyConfigured(has);
+  //   if (has) {
+  //     const key = await getApiKey();
+  //     if (key) {
+  //       // Mask all but last 4 chars
+  //       setMaskedKey('hf_...' + key.slice(-4));
+  //     }
+  //   } else {
+  //     setMaskedKey('');
+  //   }
+  // }
+
+  // const handleSaveKey = async () => {
+  //   const trimmed = keyInput.trim();
+  //   if (!trimmed) {
+  //     Alert.alert('Error', 'Please enter a valid API key');
+  //     return;
+  //   }
+  //   await setApiKey(trimmed);
+  //   setKeyInput('');
+  //   setShowKeyInput(false);
+  //   await loadKeyState();
+  //   Alert.alert('Saved', 'HuggingFace API key saved.');
+  // };
+
+  // const handleClearKey = () => {
+  //   Alert.alert(
+  //     'Remove API Key',
+  //     'AI insights will fall back to heuristic analysis.',
+  //     [
+  //       { text: 'Cancel', style: 'cancel' },
+  //       {
+  //         text: 'Remove',
+  //         style: 'destructive',
+  //         onPress: async () => {
+  //           await clearApiKey();
+  //           await loadKeyState();
+  //         },
+  //       },
+  //     ]
+  //   );
+  // };
+
+  // ── Device actions ─────────────────────────────────────────────────────────
   const handleReboot = () => {
     Alert.alert(
       'Reboot WHOOP',
@@ -60,7 +117,13 @@ export default function DeviceScreen() {
           onPress: async () => {
             setClearingData(true);
             await clearAllData();
+            // Reset history-related store state so the history tab refreshes
+            useDeviceStore.setState({
+              historicalRecords: [],
+              historyStatus: 'idle',
+            });
             setClearingData(false);
+            Alert.alert('Done', 'All stored data has been cleared.');
           },
         },
       ]
@@ -144,6 +207,77 @@ export default function DeviceScreen() {
             </View>
           </Card>
         )}
+
+        {/* AI Settings (temporarily disabled)
+        <Card style={styles.card}>
+          <Text style={styles.cardTitle}>AI Settings</Text>
+          <Text style={styles.aiDescription}>
+            HuggingFace API key for AI-powered health insights. Without a key,
+            analysis falls back to heuristic scoring.
+          </Text>
+
+          {keyConfigured && !showKeyInput && (
+            <View style={styles.keyRow}>
+              <Text style={styles.keyMasked}>{maskedKey}</Text>
+              <View style={styles.keyActions}>
+                <Button
+                  title="Change"
+                  onPress={() => setShowKeyInput(true)}
+                  variant="ghost"
+                  size="sm"
+                />
+                <Button
+                  title="Remove"
+                  onPress={handleClearKey}
+                  variant="danger"
+                  size="sm"
+                />
+              </View>
+            </View>
+          )}
+
+          {!keyConfigured && !showKeyInput && (
+            <Button
+              title="Add API Key"
+              onPress={() => setShowKeyInput(true)}
+              variant="secondary"
+              style={styles.addKeyButton}
+            />
+          )}
+
+          {showKeyInput && (
+            <View style={styles.keyInputContainer}>
+              <TextInput
+                style={styles.keyInput}
+                placeholder="hf_..."
+                placeholderTextColor={colors.textTertiary}
+                value={keyInput}
+                onChangeText={setKeyInput}
+                autoCapitalize="none"
+                autoCorrect={false}
+                secureTextEntry
+              />
+              <View style={styles.keyInputActions}>
+                <Button
+                  title="Save"
+                  onPress={handleSaveKey}
+                  variant="primary"
+                  size="sm"
+                />
+                <Button
+                  title="Cancel"
+                  onPress={() => {
+                    setShowKeyInput(false);
+                    setKeyInput('');
+                  }}
+                  variant="ghost"
+                  size="sm"
+                />
+              </View>
+            </View>
+          )}
+        </Card>
+        */}
 
         {/* Connection Action */}
         <Card style={styles.card}>
@@ -239,6 +373,51 @@ const styles = StyleSheet.create({
   controlBtn: {
     flex: 1,
   },
+
+  // ── AI Settings ────────────────────────────────────────────────────────────
+  aiDescription: {
+    fontSize: fontSize.sm,
+    color: colors.textTertiary,
+    lineHeight: 20,
+    marginBottom: spacing.md,
+  },
+  keyRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  keyMasked: {
+    fontSize: fontSize.sm,
+    fontFamily: 'monospace',
+    color: colors.textSecondary,
+  },
+  keyActions: {
+    flexDirection: 'row',
+    gap: spacing.sm,
+  },
+  addKeyButton: {
+    alignSelf: 'flex-start',
+  },
+  keyInputContainer: {
+    gap: spacing.sm,
+  },
+  keyInput: {
+    backgroundColor: colors.bgElevated,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: radius.md,
+    padding: spacing.md,
+    color: colors.text,
+    fontSize: fontSize.sm,
+    fontFamily: 'monospace',
+  },
+  keyInputActions: {
+    flexDirection: 'row',
+    gap: spacing.sm,
+    justifyContent: 'flex-end',
+  },
+
+  // ── App Info ───────────────────────────────────────────────────────────────
   appInfo: {
     alignItems: 'center',
     paddingVertical: spacing.xxl,

@@ -12,12 +12,14 @@ interface HeartRateChartProps {
   data: HeartRatePoint[];
   height?: number;
   showLabels?: boolean;
+  scrollable?: boolean;
 }
 
 export function HeartRateChart({
   data,
   height = 180,
   showLabels = true,
+  scrollable = false,
 }: HeartRateChartProps) {
   const screenWidth = Dimensions.get('window').width;
   const chartWidth = screenWidth - spacing.lg * 2 - spacing.lg * 2 - 40;
@@ -25,27 +27,23 @@ export function HeartRateChart({
   const chartData = useMemo(() => {
     if (data.length === 0) return [];
 
-    // Downsample if too many points
-    const maxPoints = 60;
+    // More points when scrollable since user can pan
+    const maxPoints = scrollable ? 200 : 60;
     const step = Math.max(1, Math.floor(data.length / maxPoints));
     const sampled = data.filter((_, i) => i % step === 0);
 
-    return sampled.map((point, index) => {
+    return sampled.map((point) => {
       const date = new Date(point.timestamp);
-      const showLabel = index % Math.max(1, Math.floor(sampled.length / 5)) === 0;
       return {
         value: point.bpm,
-        label: showLabel
-          ? date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-          : '',
-        labelTextStyle: {
-          color: colors.textTertiary,
-          fontSize: 9,
-          width: 40,
-        },
+        label: '', // No x-axis labels — shown via tooltip only
+        // Store timestamp for tooltip use
+        dataPointText: date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        textShiftY: -999, // Hide the dataPointText from rendering
+        textShiftX: -999,
       };
     });
-  }, [data]);
+  }, [data, scrollable]);
 
   const { minValue, maxValue, avgValue } = useMemo(() => {
     if (data.length === 0) return { minValue: 50, maxValue: 120, avgValue: 0 };
@@ -59,6 +57,10 @@ export function HeartRateChart({
       avgValue: avg,
     };
   }, [data]);
+
+  const pointSpacing = scrollable
+    ? Math.max(4, Math.min(8, chartWidth / chartData.length))
+    : undefined;
 
   if (chartData.length === 0) {
     return (
@@ -95,15 +97,16 @@ export function HeartRateChart({
         data={chartData}
         height={height}
         width={chartWidth}
-        adjustToWidth
+        spacing={pointSpacing}
+        adjustToWidth={!scrollable}
+        scrollToEnd={scrollable}
         color={colors.accent}
         thickness={2}
         hideDataPoints
         curved
         yAxisTextStyle={{ color: colors.textTertiary, fontSize: 10 }}
-        xAxisLabelTextStyle={{ color: colors.textTertiary, fontSize: 9 }}
         yAxisColor={colors.transparent}
-        xAxisColor={colors.border}
+        xAxisColor={colors.transparent}
         rulesColor={colors.borderSubtle}
         rulesType="dashed"
         noOfSections={4}
@@ -120,12 +123,17 @@ export function HeartRateChart({
           pointerStripWidth: 1,
           pointerColor: colors.accent,
           radius: 4,
-          pointerLabelWidth: 80,
-          pointerLabelHeight: 30,
+          pointerLabelWidth: 100,
+          pointerLabelHeight: 44,
           pointerLabelComponent: (items: any) => {
+            const val = items[0]?.value ?? 0;
+            const timeStr = items[0]?.dataPointText ?? '';
             return (
               <View style={styles.tooltip}>
-                <Text style={styles.tooltipText}>{items[0]?.value} bpm</Text>
+                <Text style={styles.tooltipValue}>{val} bpm</Text>
+                {timeStr ? (
+                  <Text style={styles.tooltipTime}>{timeStr}</Text>
+                ) : null}
               </View>
             );
           },
@@ -178,16 +186,23 @@ const styles = StyleSheet.create({
     marginTop: spacing.xs,
   },
   tooltip: {
-    backgroundColor: colors.bgCard,
+    backgroundColor: colors.bgElevated,
     borderRadius: radius.sm,
     padding: spacing.xs,
     borderWidth: 1,
     borderColor: colors.border,
+    alignItems: 'center',
   },
-  tooltipText: {
+  tooltipValue: {
     fontSize: fontSize.xs,
     fontWeight: fontWeight.semibold,
     color: colors.accent,
     textAlign: 'center',
+  },
+  tooltipTime: {
+    fontSize: 9,
+    color: colors.textTertiary,
+    textAlign: 'center',
+    marginTop: 2,
   },
 });

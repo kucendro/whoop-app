@@ -42,6 +42,18 @@ interface DeviceState {
 }
 
 export const useDeviceStore = create<DeviceState>((set, get) => {
+  // Buffer for batching historical records to avoid O(n^2) re-renders
+  let historyBuffer: HistoricalRecord[] = [];
+  let historyFlushTimer: ReturnType<typeof setTimeout> | null = null;
+
+  const flushHistoryBuffer = () => {
+    if (historyBuffer.length === 0) return;
+    const buffered = historyBuffer;
+    historyBuffer = [];
+    const { historicalRecords } = get();
+    set({ historicalRecords: [...historicalRecords, ...buffered] });
+  };
+
   // Register callbacks with the WHOOP client
   whoopClient.setCallbacks({
     onConnectionStateChange: (connectionState) => {
@@ -79,10 +91,26 @@ export const useDeviceStore = create<DeviceState>((set, get) => {
       set({ isWorn });
     },
     onHistoricalData: (record) => {
-      const { historicalRecords } = get();
-      set({ historicalRecords: [...historicalRecords, record] });
+      historyBuffer.push(record);
+      // Flush to Zustand every 500 records or 500ms, whichever comes first
+      if (historyBuffer.length >= 500) {
+        if (historyFlushTimer) clearTimeout(historyFlushTimer);
+        historyFlushTimer = null;
+        flushHistoryBuffer();
+      } else if (!historyFlushTimer) {
+        historyFlushTimer = setTimeout(() => {
+          historyFlushTimer = null;
+          flushHistoryBuffer();
+        }, 500);
+      }
     },
     onHistoryProgress: (status) => {
+      // Flush any remaining buffered records before marking complete
+      if (status === 'complete') {
+        if (historyFlushTimer) clearTimeout(historyFlushTimer);
+        historyFlushTimer = null;
+        flushHistoryBuffer();
+      }
       set({ historyStatus: status === 'downloading' ? 'downloading' : status === 'complete' ? 'complete' : 'error' });
     },
     onError: (error) => {

@@ -1,40 +1,42 @@
 // Design tokens for a minimalistic dark-first WHOOP app
+// Palette: #191C21 (bg), #252932 (elevated), #195962 (teal accent), #F56F6C (coral), #FFFFFF (text)
 export const colors = {
   // Backgrounds
-  bg: '#000000',
-  bgElevated: '#0A0A0A',
-  bgCard: '#111111',
-  bgCardHover: '#1A1A1A',
-  bgInput: '#0D0D0D',
+  bg: '#191C21',
+  bgElevated: '#252932',
+  bgCard: '#191C21', // Same as app bg — cards differentiated by border only
+  bgCardHover: '#1E2128',
+  bgInput: '#1E2128',
 
   // Borders
-  border: '#1C1C1C',
-  borderSubtle: '#141414',
-  borderFocus: '#333333',
+  border: '#2E333D',
+  borderSubtle: '#252932',
+  borderFocus: '#3A4050',
 
   // Text
-  text: '#F5F5F5',
-  textSecondary: '#8A8A8A',
-  textTertiary: '#555555',
-  textInverse: '#000000',
+  text: '#FFFFFF',
+  textSecondary: '#9CA3AF',
+  textTertiary: '#6B7280',
+  textInverse: '#191C21',
 
-  // Accent - a clean green inspired by WHOOP
-  accent: '#00D26A',
-  accentDim: '#00D26A22',
-  accentMuted: '#00D26A44',
+  // Accent — teal from WHOOP palette
+  accent: '#195962',
+  accentBright: '#1F7A85', // Slightly brighter teal for active states
+  accentDim: '#19596222',
+  accentMuted: '#19596244',
 
   // Semantic
-  success: '#00D26A',
-  warning: '#FFB020',
-  error: '#EF4444',
-  info: '#3B82F6',
+  success: '#34D399',
+  warning: '#FBBF24',
+  error: '#F56F6C', // Coral from palette — doubles as error / high-HR
+  info: '#60A5FA',
 
-  // Heart rate zones
-  hrRest: '#3B82F6',
-  hrLight: '#00D26A',
-  hrModerate: '#FFB020',
-  hrHard: '#F97316',
-  hrMax: '#EF4444',
+  // Heart rate zones (teal→coral spectrum)
+  hrRest: '#195962', // Teal — resting
+  hrLight: '#34D399', // Green — light activity
+  hrModerate: '#FBBF24', // Amber — moderate
+  hrHard: '#F59E0B', // Orange — hard
+  hrMax: '#F56F6C', // Coral — max / alert
 
   // Misc
   white: '#FFFFFF',
